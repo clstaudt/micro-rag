@@ -48,6 +48,33 @@ Full options:
 python minimal-rag.py --help
 ```
 
+### Example
+
+```shell
+                                                                                                                                                                       (micro-rag) 
+Minimal RAG Chat Tool
+Documents: data/wikipedia-ai/
+Chat Model: olmo2:7b
+Embedding Model: nomic-embed-text
+--------------------------------------------------
+Using Ollama at: http://localhost:11434
+✔ Chat model olmo2:7b loaded successfully
+✔ Embedding model nomic-embed-text loaded successfully
+⠹ Loading documents from data/wikipedia-ai/ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 0/3 • 0:00:00
+✓ Loaded 3 document(s)
+  Building vector index ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 0:00:05
+✓ Vector index built successfully
+
+RAG Chat initialized. Type 'exit' or 'quit' to end the session.
+
+
+You: Who proposed the first artificial neuron?
+
+AI:  Warren McCulloch and Walter Pitts proposed the first artificial neuron in their 1943 paper titled "A Logical Calculus of Ideas Immanent in Nervous Activity."
+```
+--------------------------------------------------
+```
+
 ### Command-line Arguments
 
 - `documents_dir`: Directory containing the documents to chat with (required)
