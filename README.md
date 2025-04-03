@@ -71,7 +71,7 @@ RAG Chat initialized. Type 'exit' or 'quit' to end the session.
 You: Who proposed the first artificial neuron?
 
 AI:  Warren McCulloch and Walter Pitts proposed the first artificial neuron in their 1943 paper titled "A Logical Calculus of Ideas Immanent in Nervous Activity."
-```
+
 --------------------------------------------------
 ```
 
