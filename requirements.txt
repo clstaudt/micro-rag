@@ -1,0 +1,7 @@
+llama-index>=0.10.0
+llama-index-llms-ollama>=0.1.1
+llama-index-embeddings-ollama>=0.1.1
+ollama>=0.1.27
+typer>=0.9.0
+halo>=0.0.31
+rich>=13.5.0 
