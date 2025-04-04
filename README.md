@@ -25,7 +25,7 @@ cd minimal-rag
 pip install -r requirements.txt
 
 # Make the script executable
-chmod +x minimal-rag.py
+chmod +x micro-rag.py
 ```
 
 ## Usage
@@ -33,19 +33,19 @@ chmod +x minimal-rag.py
 Basic usage:
 
 ```bash
-python minimal-rag.py /path/to/documents
+python micro-rag.py /path/to/documents
 ```
 
 With custom models:
 
 ```bash
-python minimal-rag.py /path/to/documents --chat-model "llama3:latest" --embed-model "nomic-embed-text"
+python micro-rag.py /path/to/documents --chat-model "llama3:latest" --embed-model "nomic-embed-text"
 ```
 
 Full options:
 
 ```bash
-python minimal-rag.py --help
+python micro-rag.py --help
 ```
 
 ### Example
