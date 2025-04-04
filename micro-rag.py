@@ -76,16 +76,13 @@ def load_documents(document_dir: str) -> List:
         ) as progress:
             task = progress.add_task(f"[green]Loading documents from {document_dir}", total=len(doc_file_paths))
             
-            # Create a custom callback for progress updates
-            def progress_callback(i, path):
-                progress.update(task, advance=1, description=f"[green]Loading document: {Path(path).name}")
-                return True
-            
-            # Load documents with progress updates
+            # Load documents
             documents = SimpleDirectoryReader(
-                input_files=doc_file_paths,
-                #callback=progress_callback
+                input_dir=document_dir
             ).load_data()
+            
+            # Complete the progress bar
+            progress.update(task, completed=len(doc_file_paths))
             
         console.print(f"[bold green]✓[/bold green] Loaded {len(documents)} document(s)")
         return documents
@@ -99,37 +96,11 @@ def build_index(documents: List, chunk_size: int = 512, chunk_overlap: int = 50)
         Settings.chunk_size = chunk_size
         Settings.chunk_overlap = chunk_overlap
         
-        # Set up the progress bar for index building
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}"),
-            BarColumn(bar_width=40),
-            TimeElapsedColumn(),
-        ) as progress:
-            # Add main indexing task
-            index_task = progress.add_task("[yellow]Building vector index", total=1000)
-            
-            # We'll simulate progress since we don't have direct access to the indexing steps
-            def update_progress():
-                steps = 50
-                for i in range(steps):
-                    progress.update(index_task, advance=1000/steps)
-                    time.sleep(0.1)
-            
-            # Create a background task to update progress while indexing happens
-            # This is a visual approximation since we don't have access to actual progress
-            import threading
-            progress_thread = threading.Thread(target=update_progress)
-            progress_thread.daemon = True
-            progress_thread.start()
-            
+        with Halo(text="Building vector index...", spinner="dots") as spinner:
             # Build the index
             index = VectorStoreIndex.from_documents(
                 documents=documents,
             )
-            
-            # Ensure progress reaches 100%
-            progress.update(index_task, completed=1000)
             
         console.print("[bold green]✓[/bold green] Vector index built successfully")
         return index
