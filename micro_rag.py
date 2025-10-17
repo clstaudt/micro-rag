@@ -15,6 +15,7 @@ from rich.markdown import Markdown
 from rich.prompt import Prompt
 from rich.progress import Progress, TextColumn, BarColumn, SpinnerColumn, TimeElapsedColumn, MofNCompleteColumn
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
 
@@ -136,10 +137,40 @@ def build_index(documents: List, chunk_size: int = 512, chunk_overlap: int = 50)
     Settings.chunk_overlap = chunk_overlap
     
     try:
-        with Halo(text="Building vector index...", spinner="dots") as spinner:
-            index = VectorStoreIndex.from_documents(documents=documents)
-            spinner.succeed("Vector index built successfully")
-            return index
+        # Step 1: Parse documents into nodes (chunks)
+        with Halo(text="Parsing documents into chunks...", spinner="dots") as spinner:
+            splitter = SentenceSplitter(
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap
+            )
+            nodes = splitter.get_nodes_from_documents(documents)
+            spinner.succeed(f"Created {len(nodes)} chunks from {len(documents)} document(s)")
+        
+        # Step 2: Embed chunks and build index with progress bar
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(bar_width=40),
+            MofNCompleteColumn(),
+            TextColumn("•"),
+            TimeElapsedColumn(),
+        ) as progress:
+            task = progress.add_task(
+                "[green]Embedding chunks and building index",
+                total=len(nodes)
+            )
+            
+            # Manually embed each node to track progress
+            for i, node in enumerate(nodes):
+                node.embedding = Settings.embed_model.get_text_embedding(node.get_content(metadata_mode="all"))
+                progress.update(task, completed=i + 1)
+            
+            # Build index from pre-embedded nodes
+            index = VectorStoreIndex(nodes)
+        
+        console.print(f"[bold green]✓[/bold green] Vector index built successfully")
+        return index
+        
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] Failed to build vector index: {e}")
         console.print("[yellow]Tip:[/yellow] Try restarting the Ollama service or reducing chunk_size")
