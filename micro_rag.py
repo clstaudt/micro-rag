@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+import logging
 import os
 import sys
-import time
+import warnings
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -17,9 +18,47 @@ from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
 
+# Suppress warnings
+warnings.filterwarnings("ignore")
+logging.getLogger("llama_index").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+
 # Initialize Typer app
 app = typer.Typer(help="A minimal RAG-based conversational AI chat tool.")
 console = Console()
+
+def get_embedding_model_context_length(model_name: str, ollama_url: str) -> int:
+    """Get the context length for an embedding model from Ollama."""
+    try:
+        # Query the model info from Ollama
+        client = ollama.Client(host=ollama_url)
+        model_info = client.show(model_name)
+        
+        # Try to extract context length from model parameters
+        if "model_info" in model_info and isinstance(model_info["model_info"], dict):
+            params = model_info["model_info"]
+            # Common parameter names for context length
+            for key in ["context_length", "max_position_embeddings", "n_ctx"]:
+                if key in params:
+                    return int(params[key])
+        
+        # Default context lengths for known models
+        known_models = {
+            "mxbai-embed-large": 512,
+            "nomic-embed-text": 8192,
+            "all-minilm": 512,
+            "snowflake-arctic-embed": 512,
+        }
+        
+        for known_model, context_length in known_models.items():
+            if known_model in model_name:
+                return context_length
+        
+        # Conservative default if unknown
+        return 512
+    except Exception:
+        # Conservative default on error
+        return 512
 
 def setup_models(chat_model_name: str, embed_model_name: str, ollama_url: str) -> Tuple[Ollama, OllamaEmbedding]:
     """Set up Ollama chat and embedding models."""
@@ -31,7 +70,7 @@ def setup_models(chat_model_name: str, embed_model_name: str, ollama_url: str) -
             chat_model = Ollama(
                 model=chat_model_name,
                 base_url=ollama_url,
-                request_timeout=90,
+                request_timeout=120.0,
             )
             Settings.llm = chat_model
             spinner.succeed(f"Chat model {chat_model_name} loaded successfully")
@@ -47,6 +86,7 @@ def setup_models(chat_model_name: str, embed_model_name: str, ollama_url: str) -
             embed_model = OllamaEmbedding(
                 model_name=embed_model_name,
                 base_url=ollama_url,
+                request_timeout=120.0,
             )
             Settings.embed_model = embed_model
             spinner.succeed(f"Embedding model {embed_model_name} loaded successfully")
@@ -92,20 +132,17 @@ def load_documents(document_dir: str) -> List:
 
 def build_index(documents: List, chunk_size: int = 512, chunk_overlap: int = 50) -> VectorStoreIndex:
     """Build a vector index from the documents."""
+    Settings.chunk_size = chunk_size
+    Settings.chunk_overlap = chunk_overlap
+    
     try:
-        Settings.chunk_size = chunk_size
-        Settings.chunk_overlap = chunk_overlap
-        
         with Halo(text="Building vector index...", spinner="dots") as spinner:
-            # Build the index
-            index = VectorStoreIndex.from_documents(
-                documents=documents,
-            )
-            
-        console.print("[bold green]✓[/bold green] Vector index built successfully")
-        return index
+            index = VectorStoreIndex.from_documents(documents=documents)
+            spinner.succeed("Vector index built successfully")
+            return index
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] Failed to build vector index: {e}")
+        console.print("[yellow]Tip:[/yellow] Try restarting the Ollama service or reducing chunk_size")
         sys.exit(1)
 
 def chat_loop(chat_engine):
@@ -156,7 +193,7 @@ def chat_loop(chat_engine):
 def chat(
     documents_dir: str = typer.Argument(..., help="Directory containing the documents to chat with"),
     chat_model: str = typer.Option("olmo2:7b", help="Ollama chat model to use"),
-    embed_model: str = typer.Option("nomic-embed-text", help="Ollama embedding model to use"),
+    embed_model: str = typer.Option("mxbai-embed-large", help="Ollama embedding model to use"),
     ollama_host: str = typer.Option(None, help="Ollama host URL (default: http://localhost:11434)"),
     chunk_size: int = typer.Option(512, help="Size of document chunks"),
     chunk_overlap: int = typer.Option(50, help="Overlap between document chunks")
@@ -176,6 +213,15 @@ def chat(
     # Setup models
     setup_models(chat_model, embed_model, ollama_url)
     
+    # Get and validate chunk size against embedding model context length
+    embedding_context_length = get_embedding_model_context_length(embed_model, ollama_url)
+    console.print(f"Embedding model context length: {embedding_context_length} tokens")
+    
+    if chunk_size > embedding_context_length:
+        console.print(f"[bold yellow]Warning:[/bold yellow] Chunk size ({chunk_size}) exceeds embedding model context length ({embedding_context_length})")
+        chunk_size = embedding_context_length
+        console.print(f"[bold green]✓[/bold green] Adjusted chunk size to {chunk_size}")
+    
     # Load documents
     documents = load_documents(documents_dir)
     
@@ -189,4 +235,4 @@ def chat(
     chat_loop(chat_engine)
 
 if __name__ == "__main__":
-    app() 
+    app()

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "micro-rag"
+version = "0.1.0"
+description = "A minimalist RAG CLI to chat with local documents via Ollama"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "Your Name" }
+]
+dependencies = [
+  "llama-index>=0.10.0",
+  "llama-index-llms-ollama>=0.1.1",
+  "llama-index-embeddings-ollama>=0.1.1",
+  "ollama>=0.1.27",
+  "typer>=0.9.0",
+  "halo>=0.0.31",
+  "rich>=13.5.0",
+  "tenacity>=8.2.0",
+]
+
+[project.scripts]
+micro-rag = "micro_rag:app"
+
+[tool.setuptools]
+py-modules = ["micro_rag"]
+
+[dependency-groups]
+dev = [
+  "pytest>=7.0.0",
+]
+
+
